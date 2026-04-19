@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scense — Sillage & Accord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+  @font-face {
+    font-family: 'Boogy Brut';
+    src: url('https://fonts.cdnfonts.com/css/boogy-brut') format('woff2');
+  }
+ 
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+ 
+  body {
+    background: #383534;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    font-family: 'Boogy Brut', 'Georgia', serif;
+    cursor: none;
+  }
+ 
+  canvas {
+    display: block;
+    position: absolute;
+    top: 0; left: 0;
+  }
+ 
+  #ui {
+    position: fixed;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+ 
+  #accord-label {
+    font-family: 'Boogy Brut', 'Georgia', serif;
+    font-size: 13px;
+    letter-spacing: 5px;
+    color: #BFC5CA;
+    opacity: 0;
+    transition: opacity 1.4s ease;
+    text-transform: uppercase;
+  }
+ 
+  #accord-sub {
+    font-family: 'Boogy Brut', 'Georgia', serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #A68F6C;
+    opacity: 0;
+    transition: opacity 1.8s ease 0.4s;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+ 
+  #accord-label.visible { opacity: 0.9; }
+  #accord-sub.visible { opacity: 0.6; }
+ 
+  #intro {
+    position: fixed;
+    top: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+ 
+  #intro p {
+    font-family: 'Boogy Brut', 'Georgia', serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #EBE7E1;
+    opacity: 0.45;
+    text-transform: uppercase;
+  }
+ 
+  #brand {
+    position: fixed;
+    top: 44px;
+    left: 44px;
+    z-index: 10;
+    pointer-events: none;
+  }
+ 
+  #brand p {
+    font-family: 'Boogy Brut', 'Georgia', serif;
+    font-size: 13px;
+    letter-spacing: 6px;
+    color: #EBE7E1;
+    text-transform: uppercase;
+  }
+ 
+  #brand span {
+    display: block;
+    font-size: 8px;
+    letter-spacing: 3px;
+    color: #EBE7E1;
+    opacity: 0.35;
+    margin-top: 4px;
+  }
+ 
+  #reset-btn {
+    position: fixed;
+    bottom: 44px;
+    right: 44px;
+    background: none;
+    border: 1px solid #B8B4AB;
+    color: #B8B4AB;
+    font-family: 'Boogy Brut', 'Georgia', serif;
+    font-size: 8px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    cursor: pointer;
+    z-index: 10;
+    border-radius: 20px;
+    transition: all 0.4s ease;
+  }
+ 
+  #reset-btn:hover {
+    border-color: #EBE7E1;
+    color: #EBE7E1;
+  }
+ 
+  #legend {
+    position: fixed;
+    bottom: 44px;
+    left: 44px;
+    z-index: 10;
+    pointer-events: none;
+  }
+ 
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+ 
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid;
+  }
+ 
+  .legend-text {
+    font-family: 'Boogy Brut', 'Georgia', serif;
+    font-size: 8px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+ 
+<canvas id="c"></canvas>
+ 
+<div id="brand">
+  <p>Scense</p>
+  <span>source · the chamber</span>
+</div>
+ 
+<div id="intro">
+  <p>move to leave your sillage &nbsp;·&nbsp; approach to form an accord</p>
+</div>
+ 
+<div id="ui">
+  <div id="accord-label">an accord has formed</div>
+  <div id="accord-sub">your sillages have met</div>
+</div>
+ 
+<div id="legend">
+  <div class="legend-item">
+    <div class="legend-dot dot-p1" style="border-color:#BFC5CA; background:rgba(191,197,202,0.2)"></div>
+    <span class="legend-text" style="color:#EBE7E1; opacity:0.4">your sillage</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot dot-p2" style="border-color:#EBE7E1; background:rgba(235,231,225,0.2)"></div>
+    <span class="legend-text" style="color:#EBE7E1; opacity:0.4">another sillage</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="border-color:#A68F6C; background:rgba(166,143,108,0.2)"></div>
+    <span class="legend-text" style="color:#EBE7E1; opacity:0.4">accord</span>
+  </div>
+</div>
+ 
+<button id="reset-btn" onclick="resetTrails()">clear floor</button>
+ 
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+ 
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+ 
+// Scense palette — only light colors for randomization
+const PALETTE = [
+  { r: 235, g: 231, b: 225 }, // Talc #EBE7E1
+  { r: 191, g: 197, b: 202 }, // Haze #BFC5CA
+  { r: 184, g: 180, b: 171 }, // Ash #B8B4AB
+  { r: 252, g: 251, b: 249 }, // Pastel Pearl #FCFBF9
+];
+ 
+let P1_COLOR = { r: 191, g: 197, b: 202 }; // Haze #BFC5CA
+let P2_COLOR = { r: 235, g: 231, b: 225 }; // Talc #EBE7E1
+const ACCORD_COLOR = { r: 166, g: 143, b: 108 }; // Resin #A68F6C
+ 
+let accordFormed = false;
+ 
+// Curved path control points for p2
+let p2Curve = { cx: 0, cy: 0 }; // bezier control point offset
+ 
+let p1 = { x: 0, y: 0 };
+let p1Trail = [];
+ 
+let p2 = { x: 0, y: 0 };
+let p2Trail = [];
+let p2Target = { x: 0, y: 0 };
+let p2Vel = { x: 0, y: 0 };
+let p2Timer = 0;
+ 
+let accordActive = false;
+let accordIntensitySmooth = 0;
+const accordLabel = document.getElementById('accord-label');
+const accordSub = document.getElementById('accord-sub');
+ 
+const TRAIL_MAX = 320;
+const RING_RADIUS = 40;
+const ACCORD_DIST = RING_RADIUS * 1.8;
+ 
+function init() {
+  p1.x = W * 0.35;
+  p1.y = H * 0.5;
+  p2.x = W * 0.65;
+  p2.y = H * 0.5;
+  setNewP2Target();
+}
+ 
+function setNewP2Target() {
+  p2Target.x = W * (0.25 + Math.random() * 0.55);
+  p2Target.y = H * (0.2 + Math.random() * 0.6);
+  // Add a perpendicular curve offset so path arcs rather than goes straight
+  const angle = Math.atan2(p2Target.y - p2.y, p2Target.x - p2.x) + Math.PI / 2;
+  const curveMag = 80 + Math.random() * 140;
+  p2Curve.cx = Math.cos(angle) * curveMag * (Math.random() > 0.5 ? 1 : -1);
+  p2Curve.cy = Math.sin(angle) * curveMag * (Math.random() > 0.5 ? 1 : -1);
+  p2Timer = 340 + Math.random() * 420;
+}
+ 
+window.addEventListener('mousemove', e => {
+  p1.x = e.clientX;
+  p1.y = e.clientY;
+});
+ 
+function randomizeColors() {
+  const pool = [...PALETTE];
+  const i1 = Math.floor(Math.random() * pool.length);
+  P1_COLOR = pool[i1];
+  pool.splice(i1, 1);
+  const i2 = Math.floor(Math.random() * pool.length);
+  P2_COLOR = pool[i2];
+  // Update legend dots
+  document.querySelector('.dot-p1').style.borderColor = `rgb(${P1_COLOR.r},${P1_COLOR.g},${P1_COLOR.b})`;
+  document.querySelector('.dot-p1').style.background = `rgba(${P1_COLOR.r},${P1_COLOR.g},${P1_COLOR.b},0.2)`;
+  document.querySelector('.dot-p2').style.borderColor = `rgb(${P2_COLOR.r},${P2_COLOR.g},${P2_COLOR.b})`;
+  document.querySelector('.dot-p2').style.background = `rgba(${P2_COLOR.r},${P2_COLOR.g},${P2_COLOR.b},0.2)`;
+}
+ 
+function resetTrails() {
+  p1Trail = [];
+  p2Trail = [];
+  accordActive = false;
+  accordFormed = false;
+  accordIntensitySmooth = 0;
+  accordLabel.classList.remove('visible');
+  accordSub.classList.remove('visible');
+}
+ 
+function drawRing(x, y, color, alpha, radius) {
+  const { r, g, b } = color;
+ 
+  // Wide outer glow
+  let grad = ctx.createRadialGradient(x, y, radius * 0.3, x, y, radius * 2.8);
+  grad.addColorStop(0, `rgba(${r},${g},${b},${alpha * 0.14})`);
+  grad.addColorStop(0.5, `rgba(${r},${g},${b},${alpha * 0.06})`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 2.8, 0, Math.PI * 2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+ 
+  // Main ring
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(${r},${g},${b},${alpha * 0.65})`;
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+ 
+  // Inner glow fill
+  let innerGrad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  innerGrad.addColorStop(0, `rgba(${r},${g},${b},${alpha * 0.07})`);
+  innerGrad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = innerGrad;
+  ctx.fill();
+}
+ 
+function drawAccord(x1, y1, x2, y2, intensity) {
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  const { r, g, b } = ACCORD_COLOR;
+ 
+  // Large bloom — strong and obvious
+  let bloom = ctx.createRadialGradient(mx, my, 0, mx, my, RING_RADIUS * 3.5);
+  bloom.addColorStop(0, `rgba(${r},${g},${b},${intensity * 0.85})`);
+  bloom.addColorStop(0.2, `rgba(${r},${g},${b},${intensity * 0.6})`);
+  bloom.addColorStop(0.5, `rgba(${r},${g},${b},${intensity * 0.25})`);
+  bloom.addColorStop(0.8, `rgba(${r},${g},${b},${intensity * 0.08})`);
+  bloom.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.beginPath();
+  ctx.arc(mx, my, RING_RADIUS * 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = bloom;
+  ctx.fill();
+ 
+  // Solid inner filled circle
+  ctx.beginPath();
+  ctx.arc(mx, my, RING_RADIUS * 0.6, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(${r},${g},${b},${intensity * 0.7})`;
+  ctx.fill();
+ 
+  // Inner ring
+  ctx.beginPath();
+  ctx.arc(mx, my, RING_RADIUS * 1.0, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(${r},${g},${b},${intensity * 0.9})`;
+  ctx.lineWidth = 2.0;
+  ctx.stroke();
+ 
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(mx, my, RING_RADIUS * 2.0, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(${r},${g},${b},${intensity * 0.45})`;
+  ctx.lineWidth = 1.0;
+  ctx.stroke();
+}
+ 
+function update() {
+  p2Timer--;
+  if (p2Timer <= 0) setNewP2Target();
+ 
+  const dx = p2Target.x + p2Curve.cx * (p2Timer / 500) - p2.x;
+  const dy = p2Target.y + p2Curve.cy * (p2Timer / 500) - p2.y;
+  // Slower acceleration and higher damping
+  p2Vel.x += dx * 0.0012;
+  p2Vel.y += dy * 0.0012;
+  p2Vel.x *= 0.97;
+  p2Vel.y *= 0.97;
+  p2.x += p2Vel.x;
+  p2.y += p2Vel.y;
+ 
+  p1Trail.push({ x: p1.x, y: p1.y });
+  p2Trail.push({ x: p2.x, y: p2.y });
+  if (p1Trail.length > TRAIL_MAX) p1Trail.shift();
+  if (p2Trail.length > TRAIL_MAX) p2Trail.shift();
+ 
+  const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  const rawIntensity = Math.max(0, 1 - dist / ACCORD_DIST);
+  // Smooth the intensity for a gentler transition
+  accordIntensitySmooth += (rawIntensity - accordIntensitySmooth) * 0.06;
+ 
+  const wasAccord = accordActive;
+  accordActive = rawIntensity > 0.05;
+ 
+  if (accordActive && !wasAccord) {
+    accordLabel.classList.add('visible');
+    accordSub.classList.add('visible');
+    accordFormed = true;
+  } else if (!accordActive && wasAccord && accordFormed) {
+    accordLabel.classList.remove('visible');
+    accordSub.classList.remove('visible');
+    // Randomize colors after accord dissolves
+    setTimeout(() => {
+      resetTrails();
+      randomizeColors();
+    }, 1800);
+    accordFormed = false;
+  }
+}
+ 
+function draw() {
+  // Slower fade = longer trail persistence
+  ctx.fillStyle = 'rgba(56, 53, 52, 0.05)';
+  ctx.fillRect(0, 0, W, H);
+ 
+  // Floor grid
+  ctx.strokeStyle = 'rgba(56,53,52,0.12)';
+  ctx.lineWidth = 0.4;
+  const gridSize = 90;
+  for (let x = 0; x < W; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+ 
+  // P1 trail
+  for (let i = 0; i < p1Trail.length; i++) {
+    const pt = p1Trail[i];
+    const age = i / p1Trail.length;
+    const alpha = age * age * 0.4;
+    drawRing(pt.x, pt.y, P1_COLOR, alpha, RING_RADIUS * (0.55 + age * 0.45));
+  }
+ 
+  // P2 trail
+  for (let i = 0; i < p2Trail.length; i++) {
+    const pt = p2Trail[i];
+    const age = i / p2Trail.length;
+    const alpha = age * age * 0.4;
+    drawRing(pt.x, pt.y, P2_COLOR, alpha, RING_RADIUS * (0.55 + age * 0.45));
+  }
+ 
+  // Accord
+  if (accordIntensitySmooth > 0.01) {
+    drawAccord(p1.x, p1.y, p2.x, p2.y, accordIntensitySmooth);
+  }
+ 
+  // Current position — brightest rings
+  drawRing(p1.x, p1.y, P1_COLOR, 1.0, RING_RADIUS);
+  drawRing(p2.x, p2.y, P2_COLOR, 1.0, RING_RADIUS);
+}
+ 
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+ 
+init();
+loop();
+</script>
+</body>
+</html>
